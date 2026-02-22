@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>DemonProxy</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Share Tech Mono', monospace;
+      background: #000;
+      color: #ccc;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .proxy-loader {
+      text-align: center;
+      padding: 40px;
+    }
+    .proxy-spinner {
+      width: 60px; height: 60px;
+      border: 3px solid rgba(255,42,42,0.1);
+      border-top-color: #ff2a2a;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 20px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .proxy-title { color: #ff2a2a; font-size: 18px; margin-bottom: 8px; }
+    .proxy-url { color: #666; font-size: 12px; max-width: 400px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .proxy-status { margin-top: 12px; font-size: 12px; color: #ff6600; }
+    .proxy-error { color: #ff2a2a; margin-top: 16px; max-width: 500px; text-align: center; line-height: 1.6; }
+    .proxy-info {
+      position: absolute;
+      top: 10px; right: 10px;
+      font-size: 10px;
+      color: #333;
+      text-align: right;
+    }
+    #proxy-iframe {
+      position: fixed; inset: 0;
+      width: 100%; height: 100%;
+      border: none;
+      display: none;
+    }
+    .btn {
+      margin-top: 16px;
+      padding: 8px 20px;
+      background: rgba(255,42,42,0.15);
+      border: 1px solid rgba(255,42,42,0.4);
+      color: #ff2a2a;
+      font-family: monospace;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .btn:hover { background: rgba(255,42,42,0.25); }
+  </style>
+  <!-- Load UV and Scramjet from CDN / local paths -->
+  <script src="https://cdn.jsdelivr.net/npm/@titaniumnetwork-dev/ultraviolet@latest/dist/uv.bundle.js" defer></script>
+</head>
+<body>
+  <div class="proxy-loader" id="loader">
+    <div class="proxy-spinner"></div>
+    <div class="proxy-title">🔥 DemonProxy Loading...</div>
+    <div class="proxy-url" id="show-url"></div>
+    <div class="proxy-status" id="proxy-status">Initializing engine...</div>
+    <div class="proxy-error hidden" id="proxy-error"></div>
+    <button class="btn hidden" id="direct-btn">Open Directly (no proxy)</button>
+  </div>
+
+  <iframe id="proxy-iframe"></iframe>
+
+  <div class="proxy-info" id="proxy-info"></div>
+
+  <script>
+    const params = new URLSearchParams(location.search);
+    const engine = params.get('engine') || 'uv';
+    const transport = params.get('transport') || 'epoxy';
+    const rawUrl = params.get('url') || '';
+
+    document.getElementById('show-url').textContent = rawUrl;
+    document.getElementById('proxy-info').textContent = `Engine: ${engine.toUpperCase()} | Transport: ${transport.toUpperCase()}`;
+
+    const setStatus = (msg) => { document.getElementById('proxy-status').textContent = msg; };
+    const showError = (msg) => {
+      const el = document.getElementById('proxy-error');
+      el.textContent = msg;
+      el.classList.remove('hidden');
+      document.getElementById('direct-btn').classList.remove('hidden');
+    };
+
+    document.getElementById('direct-btn').addEventListener('click', () => {
+      window.open(rawUrl, '_blank');
+    });
+
+    async function loadProxy() {
+      if (!rawUrl) {
+        showError('No URL specified.');
+        return;
+      }
+
+      setStatus(`Loading ${engine.toUpperCase()} engine with ${transport.toUpperCase()} transport...`);
+
+      try {
+        if (engine === 'uv') {
+          await loadUV();
+        } else if (engine === 'scramjet') {
+          await loadScramjet();
+        }
+      } catch (err) {
+        console.error('Proxy error:', err);
+        showError(`Failed to load proxy: ${err.message}\n\nThis may be due to GitHub Pages limitations. The proxy engines require a backend server with WebSocket support. For full functionality, deploy to a platform like Heroku, Railway, or Render.`);
+        setStatus('Error loading proxy engine');
+      }
+    }
+
+    // ===== ULTRAVIOLET =====
+    async function loadUV() {
+      setStatus('Registering UV service worker...');
+
+      if (!('serviceWorker' in navigator)) {
+        throw new Error('Service Workers not supported in this browser/context.');
+      }
+
+      try {
+        // Register UV service worker
+        const reg = await navigator.serviceWorker.register('/uv/sw.js', { scope: '/uv/' });
+        await navigator.serviceWorker.ready;
+        setStatus('UV service worker ready. Encoding URL...');
+
+        // Encode the URL using UV's encoding
+        // UV expects URLs in a specific format
+        const encoded = encodeURIComponent(rawUrl);
+        const proxyPath = `/uv/service/${encoded}`;
+
+        setStatus('Loading via UV...');
+        showInFrame(proxyPath);
+      } catch (swErr) {
+        // SW registration failed - common on GitHub Pages with path restrictions
+        // Fall back to bare server approach
+        setStatus('Trying bare server fallback...');
+        await tryBareServerFallback('uv');
+      }
+    }
+
+    // ===== SCRAMJET =====
+    async function loadScramjet() {
+      setStatus('Registering Scramjet service worker...');
+
+      if (!('serviceWorker' in navigator)) {
+        throw new Error('Service Workers not supported.');
+      }
+
+      try {
+        const reg = await navigator.serviceWorker.register('/scramjet/sw.js', { scope: '/scramjet/' });
+        await navigator.serviceWorker.ready;
+        setStatus('Scramjet service worker ready...');
+
+        const encoded = encodeURIComponent(rawUrl);
+        const proxyPath = `/scramjet/service/${encoded}`;
+
+        setStatus('Loading via Scramjet...');
+        showInFrame(proxyPath);
+      } catch (swErr) {
+        setStatus('Trying bare server fallback...');
+        await tryBareServerFallback('scramjet');
+      }
+    }
+
+    // ===== BARE SERVER FALLBACK =====
+    // When SW registration fails (common on static hosts),
+    // attempt to use a public bare server proxy
+    async function tryBareServerFallback(eng) {
+      // These are public bare servers compatible with UV/Scramjet
+      // Users should configure their own server for production use
+      const bareServers = [
+        'https://tomp3.cc/bare/',
+        'https://uv.holyubofficial.net/bare/',
+      ];
+
+      setStatus('Attempting bare server connection...');
+
+      // Try to build a proxy URL using known public UV instances
+      // as a demonstration fallback
+      const publicProxies = [
+        `https://uv.holyubofficial.net/service/${btoa(rawUrl)}/`,
+        `https://3kh0.github.io/e/uv/service/${encodeURIComponent(rawUrl)}`,
+      ];
+
+      // Just show the first public proxy as iframe fallback
+      const proxyUrl = `https://www.hianime.to`; // placeholder
+
+      // Actually, let's be honest and explain to the user what's needed
+      showError(
+        `⚠️ Proxy engines (UV & Scramjet) require a backend server with WebSocket support.\n\n` +
+        `GitHub Pages only serves static files and cannot run the required bare server.\n\n` +
+        `To use the full proxy:\n` +
+        `1. Deploy the server/ folder to Railway, Render, or Heroku\n` +
+        `2. Update the bare server URL in config.js\n\n` +
+        `Until then, here are some working public UV instances you can visit directly:`
+      );
+      setStatus('Backend server required');
+
+      // Show working alternatives
+      const alternatives = document.createElement('div');
+      alternatives.style.cssText = 'margin-top:12px; display:flex; gap:8px; flex-wrap:wrap; justify-content:center;';
+      const links = [
+        ['Holy Unblocker', 'https://holyubofficial.net'],
+        ['Incognito', 'https://incognito.wtf'],
+        ['Croxy Proxy', 'https://www.croxyproxy.com'],
+      ];
+      links.forEach(([label, href]) => {
+        const a = document.createElement('a');
+        a.href = href; a.target = '_blank';
+        a.textContent = label;
+        a.style.cssText = 'padding:6px 14px; background:rgba(255,102,0,0.15); border:1px solid rgba(255,102,0,0.4); color:#ff6600; font-family:monospace; font-size:12px; text-decoration:none;';
+        alternatives.appendChild(a);
+      });
+      document.getElementById('loader').appendChild(alternatives);
+    }
+
+    function showInFrame(src) {
+      const frame = document.getElementById('proxy-iframe');
+      frame.src = src;
+      frame.style.display = 'block';
+      document.getElementById('loader').style.display = 'none';
+      frame.onerror = () => showError('Failed to load URL via proxy.');
+    }
+
+    loadProxy();
+  </script>
+</body>
+</html>

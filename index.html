@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DemonOS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="static/os.css" />
+</head>
+<body>
+  <!-- Boot Screen -->
+  <div id="boot-screen">
+    <div class="boot-content">
+      <div class="demon-logo">
+        <svg viewBox="0 0 200 200" width="120" height="120">
+          <defs>
+            <filter id="glow">
+              <feGaussianBlur stdDeviation="4" result="blur"/>
+              <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+          </defs>
+          <polygon points="100,10 190,170 10,170" fill="none" stroke="#ff2a2a" stroke-width="2" filter="url(#glow)"/>
+          <polygon points="100,40 165,155 35,155" fill="none" stroke="#ff6600" stroke-width="1" filter="url(#glow)"/>
+          <circle cx="100" cy="120" r="15" fill="#ff2a2a" filter="url(#glow)"/>
+          <circle cx="75" cy="90" r="6" fill="#ff6600" filter="url(#glow)"/>
+          <circle cx="125" cy="90" r="6" fill="#ff6600" filter="url(#glow)"/>
+          <line x1="100" y1="10" x2="100" y2="190" stroke="#ff2a2a" stroke-width="0.5" opacity="0.3"/>
+        </svg>
+      </div>
+      <div class="boot-title">DEMON<span>OS</span></div>
+      <div class="boot-version">v6.6.6 — INFERNAL KERNEL</div>
+      <div class="boot-log" id="boot-log"></div>
+      <div class="boot-bar"><div class="boot-bar-fill" id="boot-bar-fill"></div></div>
+    </div>
+  </div>
+
+  <!-- Desktop -->
+  <div id="desktop" class="hidden">
+    <!-- Scanlines overlay -->
+    <div class="scanlines"></div>
+    <!-- Background particles -->
+    <canvas id="bg-canvas"></canvas>
+
+    <!-- Taskbar -->
+    <div id="taskbar">
+      <div class="taskbar-left">
+        <div class="start-btn" id="start-btn" title="DemonOS Menu">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+            <polygon points="12,2 22,20 2,20"/>
+          </svg>
+          <span>DEMON</span>
+        </div>
+        <div id="open-windows-bar"></div>
+      </div>
+      <div class="taskbar-right">
+        <div class="tray-item" id="clock">00:00:00</div>
+        <div class="tray-item" id="tray-date">MON 01/01</div>
+      </div>
+    </div>
+
+    <!-- Desktop Icons -->
+    <div id="desktop-icons">
+      <div class="desktop-icon" data-window="proxy">
+        <div class="icon-img">🔥</div>
+        <div class="icon-label">DemonProxy</div>
+      </div>
+      <div class="desktop-icon" data-window="browser">
+        <div class="icon-img">🌐</div>
+        <div class="icon-label">InfernoNet</div>
+      </div>
+      <div class="desktop-icon" data-window="settings">
+        <div class="icon-img">⚙️</div>
+        <div class="icon-label">Settings</div>
+      </div>
+      <div class="desktop-icon" data-window="terminal">
+        <div class="icon-img">💀</div>
+        <div class="icon-label">Terminal</div>
+      </div>
+      <div class="desktop-icon" data-window="games">
+        <div class="icon-img">🎮</div>
+        <div class="icon-label">Hellarcade</div>
+      </div>
+      <div class="desktop-icon" data-window="about">
+        <div class="icon-img">👁️</div>
+        <div class="icon-label">About</div>
+      </div>
+    </div>
+
+    <!-- Start Menu -->
+    <div id="start-menu" class="hidden">
+      <div class="start-menu-header">
+        <span>👺 DemonOS</span>
+        <span class="start-version">v6.6.6</span>
+      </div>
+      <div class="start-menu-items">
+        <div class="start-item" data-window="proxy">🔥 DemonProxy</div>
+        <div class="start-item" data-window="browser">🌐 InfernoNet Browser</div>
+        <div class="start-item" data-window="terminal">💀 Terminal</div>
+        <div class="start-item" data-window="games">🎮 Hellarcade</div>
+        <div class="start-item" data-window="settings">⚙️ Settings</div>
+        <div class="start-item" data-window="about">👁️ About DemonOS</div>
+      </div>
+    </div>
+
+    <!-- Windows Container -->
+    <div id="windows-container"></div>
+  </div>
+
+  <!-- Window Templates -->
+  <template id="tpl-proxy">
+    <div class="window-content proxy-window">
+      <div class="proxy-header">
+        <div class="proxy-logo">🔥 DemonProxy</div>
+        <div class="proxy-subtitle">Unblocked Gateway — Choose Your Engine</div>
+      </div>
+      <div class="transport-selector">
+        <div class="transport-label">Transport Layer:</div>
+        <div class="transport-btns">
+          <button class="transport-btn active" data-transport="epoxy">Epoxy</button>
+          <button class="transport-btn" data-transport="libcurl">Libcurl</button>
+        </div>
+      </div>
+      <div class="proxy-selector">
+        <div class="proxy-label">Proxy Engine:</div>
+        <div class="proxy-btns">
+          <button class="proxy-engine-btn active" data-engine="uv">Ultraviolet (UV)</button>
+          <button class="proxy-engine-btn" data-engine="scramjet">Scramjet</button>
+        </div>
+      </div>
+      <div class="url-bar-wrap">
+        <input class="url-input" type="text" placeholder="Enter URL to access (e.g. https://google.com)" />
+        <button class="go-btn">GO</button>
+      </div>
+      <div class="proxy-status">
+        <span class="status-dot active"></span>
+        <span class="status-text">Engine: <strong>UV</strong> | Transport: <strong>Epoxy</strong> | Ready</span>
+      </div>
+      <div class="proxy-frame-wrap">
+        <iframe class="proxy-frame" id="proxy-frame" sandbox="allow-forms allow-scripts allow-same-origin allow-popups"></iframe>
+      </div>
+      <div class="proxy-info">
+        <div class="info-card">
+          <div class="info-title">Ultraviolet (UV)</div>
+          <div class="info-desc">Advanced service worker proxy. Handles complex SPAs, supports cookies, localStorage, and most modern web features.</div>
+        </div>
+        <div class="info-card">
+          <div class="info-title">Scramjet</div>
+          <div class="info-desc">Next-gen rewriting engine. Faster module rewriting and better ES module support for modern applications.</div>
+        </div>
+        <div class="info-card">
+          <div class="info-title">Epoxy</div>
+          <div class="info-desc">WebAssembly-powered TCP transport over WebSocket. Full network stack emulation.</div>
+        </div>
+        <div class="info-card">
+          <div class="info-title">Libcurl</div>
+          <div class="info-desc">LibCurl.js WASM transport. Uses cURL under the hood for maximum compatibility with complex sites.</div>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <template id="tpl-browser">
+    <div class="window-content browser-window">
+      <div class="browser-toolbar">
+        <button class="nav-btn" id="btn-back">◀</button>
+        <button class="nav-btn" id="btn-fwd">▶</button>
+        <button class="nav-btn" id="btn-refresh">↺</button>
+        <input class="browser-url" type="text" placeholder="Search or enter address..." />
+        <button class="nav-btn go-nav-btn">GO</button>
+      </div>
+      <iframe class="browser-frame" src="about:blank"></iframe>
+    </div>
+  </template>
+
+  <template id="tpl-settings">
+    <div class="window-content settings-window">
+      <div class="settings-title">⚙️ System Settings</div>
+      <div class="settings-group">
+        <div class="setting-label">Wallpaper Theme</div>
+        <div class="setting-options">
+          <button class="setting-btn active" data-theme="infernal">Infernal</button>
+          <button class="setting-btn" data-theme="abyss">Abyss</button>
+          <button class="setting-btn" data-theme="void">Void</button>
+          <button class="setting-btn" data-theme="ember">Ember</button>
+        </div>
+      </div>
+      <div class="settings-group">
+        <div class="setting-label">Scanlines Effect</div>
+        <div class="setting-options">
+          <button class="setting-btn active" data-scanlines="on">ON</button>
+          <button class="setting-btn" data-scanlines="off">OFF</button>
+        </div>
+      </div>
+      <div class="settings-group">
+        <div class="setting-label">Accent Color</div>
+        <div class="color-swatches">
+          <div class="swatch" style="background:#ff2a2a" data-color="#ff2a2a"></div>
+          <div class="swatch" style="background:#ff6600" data-color="#ff6600"></div>
+          <div class="swatch" style="background:#ff00ff" data-color="#ff00ff"></div>
+          <div class="swatch" style="background:#00ffcc" data-color="#00ffcc"></div>
+          <div class="swatch" style="background:#7700ff" data-color="#7700ff"></div>
+        </div>
+      </div>
+      <div class="settings-group">
+        <div class="setting-label">Default Proxy Engine</div>
+        <div class="setting-options">
+          <button class="setting-btn active" data-default-engine="uv">Ultraviolet</button>
+          <button class="setting-btn" data-default-engine="scramjet">Scramjet</button>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <template id="tpl-terminal">
+    <div class="window-content terminal-window">
+      <div class="term-header">DemonOS Terminal v6.6.6</div>
+      <div class="term-output" id="term-output">
+        <div class="term-line">Welcome to <span style="color:#ff2a2a">DemonOS</span> Terminal</div>
+        <div class="term-line">Type <span style="color:#ff6600">help</span> for available commands.</div>
+        <div class="term-line">&nbsp;</div>
+      </div>
+      <div class="term-input-row">
+        <span class="term-prompt">demon@os:~$</span>
+        <input class="term-input" type="text" autofocus autocomplete="off" spellcheck="false"/>
+      </div>
+    </div>
+  </template>
+
+  <template id="tpl-games">
+    <div class="window-content games-window">
+      <div class="games-title">🎮 Hellarcade</div>
+      <div class="games-grid">
+        <div class="game-card" data-game="snake">
+          <div class="game-icon">🐍</div>
+          <div class="game-name">Inferno Snake</div>
+          <div class="game-desc">Classic snake in hell</div>
+          <button class="play-btn">PLAY</button>
+        </div>
+        <div class="game-card" data-game="breakout">
+          <div class="game-icon">🧱</div>
+          <div class="game-name">Demon Breakout</div>
+          <div class="game-desc">Break the gates of hell</div>
+          <button class="play-btn">PLAY</button>
+        </div>
+        <div class="game-card" data-game="pong">
+          <div class="game-icon">🏓</div>
+          <div class="game-name">Hell Pong</div>
+          <div class="game-desc">Classic pong remix</div>
+          <button class="play-btn">PLAY</button>
+        </div>
+      </div>
+      <div id="game-canvas-wrap" class="hidden">
+        <button class="back-btn" id="back-to-games">← Back</button>
+        <canvas id="game-canvas" width="500" height="350"></canvas>
+      </div>
+    </div>
+  </template>
+
+  <template id="tpl-about">
+    <div class="window-content about-window">
+      <div class="about-logo">
+        <svg viewBox="0 0 200 200" width="80" height="80">
+          <polygon points="100,10 190,170 10,170" fill="none" stroke="#ff2a2a" stroke-width="2"/>
+          <polygon points="100,40 165,155 35,155" fill="none" stroke="#ff6600" stroke-width="1"/>
+          <circle cx="100" cy="120" r="15" fill="#ff2a2a"/>
+          <circle cx="75" cy="90" r="6" fill="#ff6600"/>
+          <circle cx="125" cy="90" r="6" fill="#ff6600"/>
+        </svg>
+      </div>
+      <div class="about-name">DemonOS</div>
+      <div class="about-version">Version 6.6.6 — Infernal Kernel</div>
+      <div class="about-desc">A fully-featured OS-style web interface with built-in unblocked proxy support via Ultraviolet and Scramjet engines over Epoxy and Libcurl transports.</div>
+      <div class="about-specs">
+        <div class="spec-row"><span>Proxy Engine</span><span>UV + Scramjet</span></div>
+        <div class="spec-row"><span>Transport</span><span>Epoxy / Libcurl</span></div>
+        <div class="spec-row"><span>Kernel</span><span>Infernal v6.6.6</span></div>
+        <div class="spec-row"><span>UI Framework</span><span>Vanilla Hell</span></div>
+        <div class="spec-row"><span>License</span><span>WTFPL</span></div>
+      </div>
+    </div>
+  </template>
+
+  <script src="static/os.js"></script>
+</body>
+</html>
